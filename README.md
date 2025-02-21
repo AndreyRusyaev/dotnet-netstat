@@ -2,6 +2,9 @@
 
 Show active tcp connections with module name.
 
+## Supported platforms
+Windows 10 or greater. (TODO: MacOS, Ubuntu)
+
 ## How to run it
 
 Ensure that .Net 8 or later is installed
