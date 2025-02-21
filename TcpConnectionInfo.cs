@@ -8,3 +8,10 @@ internal record TcpConnectionInfo(
     TcpState TcpState, 
     IPEndPoint Local, 
     IPEndPoint Remote);
+
+internal record UdpConnectionInfo(
+    int OwnerPid, 
+    string? OwnerModuleName, 
+    string? OwnerModulePath, 
+    DateTime? Created, 
+    IPEndPoint Local);
