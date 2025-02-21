@@ -1,6 +1,6 @@
 using System.Net;
 
-internal record TcpV4ConnectionInfo(
+internal record TcpV6ConnectionInfo(
     int OwnerPid, 
     string? OwnerModuleName, 
     string? OwnerModulePath, 

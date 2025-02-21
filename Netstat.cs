@@ -10,39 +10,38 @@ internal class Netstat
 
     public IEnumerable<TcpV4ConnectionInfo> GetTcpV4Connections()
     {
-        IntPtr tablePointer = IntPtr.Zero;
-        int tableSize = 0;
+        IntPtr tcpTablePtr = IntPtr.Zero;
+        int tcpTableSize = 0;
 
         try
         {
-            int result = IpHlpApi.GetExtendedTcpTable(tablePointer, ref tableSize, true, IpHlpApi.AF_INET, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
+            int result = IpHlpApi.GetExtendedTcpTable(tcpTablePtr, ref tcpTableSize, true, IpHlpApi.AF_INET, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
             if (result != ERROR_INSUFFICIENT_BUFFER)
             {
                 throw new Win32Exception(result);
             }
 
-            tablePointer = Marshal.AllocHGlobal(tableSize);
+            tcpTablePtr = Marshal.AllocHGlobal(tcpTableSize);
 
-            result = IpHlpApi.GetExtendedTcpTable(tablePointer, ref tableSize, true, IpHlpApi.AF_INET, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
+            result = IpHlpApi.GetExtendedTcpTable(tcpTablePtr, ref tcpTableSize, true, IpHlpApi.AF_INET, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
             if (result != 0)
             {
                 throw new Win32Exception(result);
             }
 
-            IpHlpApi.MIB_TCPTABLE_OWNER_MODULE table = Marshal.PtrToStructure<IpHlpApi.MIB_TCPTABLE_OWNER_MODULE>(tablePointer);
+            IpHlpApi.MIB_TCPTABLE_OWNER_MODULE tcpTable = Marshal.PtrToStructure<IpHlpApi.MIB_TCPTABLE_OWNER_MODULE>(tcpTablePtr);
 
-            foreach (IntPtr tableEntryPtr in table.GetTableEntries(tablePointer))
+            foreach (IntPtr tcpTableEntryPtr in tcpTable.GetTableEntries(tcpTablePtr))
             {
-                IpHlpApi.MIB_TCPROW_OWNER_MODULE tableEntry = table.GetTableEntry(tableEntryPtr);
-                string? moduleName = null;
-                string? modulePath = null;
+                IpHlpApi.MIB_TCPROW_OWNER_MODULE tableEntry = tcpTable.GetTableEntry(tcpTableEntryPtr);
+                IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO? moduleBasicInfo = null;
 
                 IntPtr moduleInfoPtr = IntPtr.Zero;
                 int moduleInfoSize = 0;
                 try
                 {
                     result = IpHlpApi.GetOwnerModuleFromTcpEntry(
-                        tableEntryPtr,
+                        tcpTableEntryPtr,
                         IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC,
                         moduleInfoPtr,
                         ref moduleInfoSize);
@@ -51,7 +50,7 @@ internal class Netstat
                         moduleInfoPtr = Marshal.AllocHGlobal(moduleInfoSize);
 
                         result = IpHlpApi.GetOwnerModuleFromTcpEntry(
-                            tableEntryPtr,
+                            tcpTableEntryPtr,
                             IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC,
                             moduleInfoPtr,
                             ref moduleInfoSize);
@@ -60,9 +59,7 @@ internal class Netstat
                             throw new Win32Exception(result);
                         }
 
-                        IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO moduleInfo = Marshal.PtrToStructure<IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO>(moduleInfoPtr);
-                        moduleName = moduleInfo.pModuleName;
-                        modulePath = moduleInfo.pModulePath;
+                        moduleBasicInfo = Marshal.PtrToStructure<IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO>(moduleInfoPtr);
                     }
                     else
                     {
@@ -79,34 +76,118 @@ internal class Netstat
 
                 yield return new TcpV4ConnectionInfo(
                     tableEntry.dwOwningPid,
-                    moduleName,
-                    modulePath,
+                    moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
+                    moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
                     DateTime.FromFileTime(tableEntry.liCreateTimestamp),
                     GetTcpState(tableEntry.dwState),
-                    GetIpHostName(tableEntry.dwLocalAddr),
-                    GetPort(tableEntry.dwLocalPort),
-                    GetIpHostName(tableEntry.dwRemoteAddr),
-                    GetPort(tableEntry.dwRemotePort));
+                    GetTcpV4Endpoint(tableEntry.dwLocalAddr, tableEntry.dwLocalPort),
+                    GetTcpV4Endpoint(tableEntry.dwRemoteAddr, tableEntry.dwRemotePort));
 
             }
         }
         finally
         {
-            if (tablePointer != IntPtr.Zero)
+            if (tcpTablePtr != IntPtr.Zero)
             {
-                Marshal.FreeHGlobal(tablePointer);
+                Marshal.FreeHGlobal(tcpTablePtr);
             }
         }
     }
 
-    IPAddress GetIpHostName(int ip)
+    public IEnumerable<TcpV6ConnectionInfo> GetTcpV6Connections()
     {
-        return new IPAddress((uint)ip);
+        IntPtr tcpTablePtr = IntPtr.Zero;
+        int tcpTableSize = 0;
+
+        try
+        {
+            int result = IpHlpApi.GetExtendedTcpTable(tcpTablePtr, ref tcpTableSize, true, IpHlpApi.AF_INET6, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
+            if (result != ERROR_INSUFFICIENT_BUFFER)
+            {
+                throw new Win32Exception(result);
+            }
+
+            tcpTablePtr = Marshal.AllocHGlobal(tcpTableSize);
+
+            result = IpHlpApi.GetExtendedTcpTable(tcpTablePtr, ref tcpTableSize, true, IpHlpApi.AF_INET6, IpHlpApi.TCP_TABLE_CLASS.TCP_TABLE_OWNER_MODULE_ALL, 0);
+            if (result != 0)
+            {
+                throw new Win32Exception(result);
+            }
+
+            IpHlpApi.MIB_TCP6TABLE_OWNER_MODULE tcpTable = Marshal.PtrToStructure<IpHlpApi.MIB_TCP6TABLE_OWNER_MODULE>(tcpTablePtr);
+
+            foreach (IntPtr tcpTableEntryPtr in tcpTable.GetTableEntries(tcpTablePtr))
+            {
+                IpHlpApi.MIB_TCP6ROW_OWNER_MODULE tableEntry = tcpTable.GetTableEntry(tcpTableEntryPtr);
+                IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO? moduleBasicInfo = null;
+
+                IntPtr moduleInfoPtr = IntPtr.Zero;
+                int moduleInfoSize = 0;
+                try
+                {
+                    result = IpHlpApi.GetOwnerModuleFromTcp6Entry(
+                        tcpTableEntryPtr,
+                        IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC,
+                        moduleInfoPtr,
+                        ref moduleInfoSize);
+                    if (result == ERROR_INSUFFICIENT_BUFFER)
+                    {
+                        moduleInfoPtr = Marshal.AllocHGlobal(moduleInfoSize);
+
+                        result = IpHlpApi.GetOwnerModuleFromTcp6Entry(
+                            tcpTableEntryPtr,
+                            IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC,
+                            moduleInfoPtr,
+                            ref moduleInfoSize);
+                        if (result != 0)
+                        {
+                            throw new Win32Exception(result);
+                        }
+
+                        moduleBasicInfo = Marshal.PtrToStructure<IpHlpApi.TCPIP_OWNER_MODULE_BASIC_INFO>(moduleInfoPtr);
+                    }
+                    else
+                    {
+                        // Failed to retrieve module info (Access denied, etc.)
+                    }
+                }
+                finally
+                {
+                    if (moduleInfoPtr != IntPtr.Zero)
+                    {
+                        Marshal.FreeHGlobal(moduleInfoPtr);
+                    }
+                }
+
+                yield return new TcpV6ConnectionInfo(
+                    tableEntry.dwOwningPid,
+                    moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
+                    moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
+                    DateTime.FromFileTime(tableEntry.liCreateTimestamp),
+                    GetTcpState(tableEntry.dwState),
+                    GetTcpV6Endpoint(tableEntry.ucLocalAddr, tableEntry.dwLocalScopeId, tableEntry.dwLocalPort),
+                    GetTcpV6Endpoint(tableEntry.ucRemoteAddr, tableEntry.dwRemoteScopeId, tableEntry.dwRemotePort));
+
+            }
+        }
+        finally
+        {
+            if (tcpTablePtr != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(tcpTablePtr);
+            }
+        }
     }
 
-    int GetPort(int port)
+    IPEndPoint GetTcpV4Endpoint(int ip, int port)
     {
-        return (ushort)IPAddress.NetworkToHostOrder((short)port);
+        return new IPEndPoint((uint)ip, (ushort)IPAddress.NetworkToHostOrder((short)port));
+    }
+
+    IPEndPoint GetTcpV6Endpoint(byte[] address, int scope, int port)
+    {
+        return new IPEndPoint(new IPAddress(address, scope), (ushort)IPAddress.NetworkToHostOrder((short)port));
     }
 
     TcpState GetTcpState(IpHlpApi.MIB_TCP_STATE state)

@@ -19,4 +19,7 @@ internal static partial class IpHlpApi
 
     [DllImport("iphlpapi.dll")]
     public static extern int GetOwnerModuleFromTcpEntry(IntPtr pTcpTable, TCPIP_OWNER_MODULE_INFO_CLASS Class, IntPtr pBuffer, ref int pdwSize);
+
+    [DllImport("iphlpapi.dll")]
+    public static extern int GetOwnerModuleFromTcp6Entry(IntPtr pTcpEntry, TCPIP_OWNER_MODULE_INFO_CLASS Class, IntPtr pBuffer, ref int pdwSize);
 }

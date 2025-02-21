@@ -68,6 +68,67 @@ internal static partial class IpHlpApi
         public long[] OwningModuleInfo = new long[16];
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MIB_TCP6TABLE_OWNER_MODULE
+    {
+        public MIB_TCP6TABLE_OWNER_MODULE()
+        {            
+        }
+
+        public int dwNumEntries;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+        public MIB_TCP6ROW_OWNER_MODULE[] table = new MIB_TCP6ROW_OWNER_MODULE[1];
+
+        public IntPtr[] GetTableEntries(IntPtr tablePointer)
+        {
+            var tableEntries = new IntPtr[dwNumEntries];
+            IntPtr itemPtr = tablePointer + Marshal.OffsetOf<MIB_TCP6TABLE_OWNER_MODULE>(nameof(table));
+            for (int ii = 0; ii < dwNumEntries; ii += 1)
+            {
+                tableEntries[ii] = itemPtr;
+                itemPtr += Marshal.SizeOf<MIB_TCP6ROW_OWNER_MODULE>();
+            }
+            return tableEntries;
+        }
+
+        public MIB_TCP6ROW_OWNER_MODULE GetTableEntry(IntPtr itemPtr)
+        {
+            return Marshal.PtrToStructure<MIB_TCP6ROW_OWNER_MODULE>(itemPtr);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MIB_TCP6ROW_OWNER_MODULE
+    {
+        public MIB_TCP6ROW_OWNER_MODULE()
+        {            
+        }
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] ucLocalAddr = new byte[16];
+
+        public int dwLocalScopeId;
+
+        public int dwLocalPort;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] ucRemoteAddr = new byte[16];
+
+        public int dwRemoteScopeId;
+
+        public int dwRemotePort;
+
+        public MIB_TCP_STATE dwState;
+
+        public int dwOwningPid;
+
+        public long liCreateTimestamp;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public long[] OwningModuleInfo = new long[16];
+    }
+
     [DllImport("iphlpapi.dll")]
     public static extern int GetExtendedTcpTable(IntPtr pTcpTable, ref int pdwSize, bool bOrder, int ulAf, TCP_TABLE_CLASS TableClass, int Reserved);
 }
