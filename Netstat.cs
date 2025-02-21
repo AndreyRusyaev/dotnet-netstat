@@ -8,7 +8,7 @@ internal class Netstat
 
     const int ERROR_INSUFFICIENT_BUFFER = 122;
 
-    public IEnumerable<TcpV4ConnectionInfo> GetTcpV4Connections()
+    public IEnumerable<TcpConnectionInfo> GetTcpV4Connections()
     {
         IntPtr tcpTablePtr = IntPtr.Zero;
         int tcpTableSize = 0;
@@ -74,7 +74,7 @@ internal class Netstat
                     }
                 }
 
-                yield return new TcpV4ConnectionInfo(
+                yield return new TcpConnectionInfo(
                     tableEntry.dwOwningPid,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
@@ -94,7 +94,7 @@ internal class Netstat
         }
     }
 
-    public IEnumerable<TcpV6ConnectionInfo> GetTcpV6Connections()
+    public IEnumerable<TcpConnectionInfo> GetTcpV6Connections()
     {
         IntPtr tcpTablePtr = IntPtr.Zero;
         int tcpTableSize = 0;
@@ -160,7 +160,7 @@ internal class Netstat
                     }
                 }
 
-                yield return new TcpV6ConnectionInfo(
+                yield return new TcpConnectionInfo(
                     tableEntry.dwOwningPid,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
