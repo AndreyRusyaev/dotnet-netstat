@@ -2,13 +2,13 @@ using System.ComponentModel;
 using System.Net;
 using System.Runtime.InteropServices;
 
-class Netstat
+internal class Netstat
 {
     const int ERROR_ACCESS_DENIED = 5;
 
     const int ERROR_INSUFFICIENT_BUFFER = 122;
 
-    public IEnumerable<TcpConnectionInfo> GetTcpConnections()
+    public IEnumerable<TcpV4ConnectionInfo> GetTcpV4Connections()
     {
         IntPtr tablePointer = IntPtr.Zero;
         int tableSize = 0;
@@ -42,9 +42,9 @@ class Netstat
                 try
                 {
                     result = IpHlpApi.GetOwnerModuleFromTcpEntry(
-                        tableEntryPtr, 
-                        IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC, 
-                        moduleInfoPtr, 
+                        tableEntryPtr,
+                        IpHlpApi.TCPIP_OWNER_MODULE_INFO_CLASS.TCPIP_OWNER_MODULE_INFO_BASIC,
+                        moduleInfoPtr,
                         ref moduleInfoSize);
                     if (result == ERROR_INSUFFICIENT_BUFFER)
                     {
@@ -77,7 +77,7 @@ class Netstat
                     }
                 }
 
-                yield return new TcpConnectionInfo(
+                yield return new TcpV4ConnectionInfo(
                     tableEntry.dwOwningPid,
                     moduleName,
                     modulePath,
@@ -140,24 +140,5 @@ class Netstat
         }
 
         return TcpState.Unknown;
-    }
-
-    public record TcpConnectionInfo(int OwnerPid, string? OwnerModuleName, string? OwnerModulePath, DateTime Created, TcpState TcpState, IPAddress LocalHost, int LocalPort, IPAddress RemoteHost, int RemotePort);
-
-    public enum TcpState
-    {
-        Unknown,
-        Closed,
-        Listening,
-        SynSent,
-        SynReceived,
-        Established,
-        FinWait,
-        FinWait2,
-        CloseWait,
-        Closing,
-        LastAck,
-        TimeWait,
-        DeleteTcb
     }
 }
