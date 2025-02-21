@@ -1,6 +1,6 @@
 # dotnet-netstat
 
-Show active tcp connections with module name.
+Show active tcp connections with connection time and module name.
 
 ## Supported platforms
 Windows 10 or greater. (TODO: MacOS, Ubuntu)
