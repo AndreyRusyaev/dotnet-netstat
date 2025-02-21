@@ -4,7 +4,7 @@ internal record TcpV6ConnectionInfo(
     int OwnerPid, 
     string? OwnerModuleName, 
     string? OwnerModulePath, 
-    DateTime Created, 
+    DateTime? Created, 
     TcpState TcpState, 
     IPEndPoint Local, 
     IPEndPoint Remote);

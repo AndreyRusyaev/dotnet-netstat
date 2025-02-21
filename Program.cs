@@ -9,7 +9,7 @@ Console.WriteLine(
     "remote_ip",
     "rport",
     "tcp_state",
-    "creation_date");
+    "active_time");
 
 var netstat = new Netstat();
 
@@ -34,7 +34,7 @@ foreach (var tcpConnectionInfo in netstat.GetTcpV4Connections())
     }
 
     Console.WriteLine(
-        "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7}",
+        "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7,4}",
         tcpConnectionInfo.OwnerPid,
         shortenedModuleName,
         local_ip,
@@ -42,7 +42,7 @@ foreach (var tcpConnectionInfo in netstat.GetTcpV4Connections())
         remote_ip,
         tcpConnectionInfo.Remote.Port,
         tcpConnectionInfo.TcpState,
-        tcpConnectionInfo.Created);
+        GetActiveTime(tcpConnectionInfo.Created));
 }
 
 foreach (var tcpConnectionInfo in netstat.GetTcpV6Connections())
@@ -66,7 +66,7 @@ foreach (var tcpConnectionInfo in netstat.GetTcpV6Connections())
     }
 
     Console.WriteLine(
-        "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7}",
+        "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7,4}",
         tcpConnectionInfo.OwnerPid,
         shortenedModuleName,
         local_ip,
@@ -74,5 +74,30 @@ foreach (var tcpConnectionInfo in netstat.GetTcpV6Connections())
         remote_ip,
         tcpConnectionInfo.Remote.Port,
         tcpConnectionInfo.TcpState,
-        tcpConnectionInfo.Created);
+        GetActiveTime(tcpConnectionInfo.Created));
+}
+
+string GetActiveTime(DateTime? created)
+{
+    if (created == null)
+    {
+        return "";
+    }
+
+    TimeSpan activeTime = DateTime.Now - created.Value;
+
+    if (activeTime.TotalSeconds < 100)
+    {
+        return $"{(int)activeTime.TotalSeconds}s";
+    }
+
+    if (activeTime.TotalMinutes < 100)
+    {
+        return $"{(int)activeTime.TotalMinutes}m";    
+    }
+
+    var totalHours = (int)activeTime.TotalMinutes / 60;
+    var minutes = (int)activeTime.TotalMinutes % 60;
+
+    return $"{totalHours}h{minutes}m";
 }

@@ -78,7 +78,7 @@ internal class Netstat
                     tableEntry.dwOwningPid,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
-                    DateTime.FromFileTime(tableEntry.liCreateTimestamp),
+                    tableEntry.liCreateTimestamp > 0 ? DateTime.FromFileTime(tableEntry.liCreateTimestamp) : null,
                     GetTcpState(tableEntry.dwState),
                     GetTcpV4Endpoint(tableEntry.dwLocalAddr, tableEntry.dwLocalPort),
                     GetTcpV4Endpoint(tableEntry.dwRemoteAddr, tableEntry.dwRemotePort));
@@ -164,7 +164,7 @@ internal class Netstat
                     tableEntry.dwOwningPid,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModuleName : null,
                     moduleBasicInfo != null ? moduleBasicInfo.Value.pModulePath : null,
-                    DateTime.FromFileTime(tableEntry.liCreateTimestamp),
+                    tableEntry.liCreateTimestamp > 0 ? DateTime.FromFileTime(tableEntry.liCreateTimestamp) : null,
                     GetTcpState(tableEntry.dwState),
                     GetTcpV6Endpoint(tableEntry.ucLocalAddr, tableEntry.dwLocalScopeId, tableEntry.dwLocalPort),
                     GetTcpV6Endpoint(tableEntry.ucRemoteAddr, tableEntry.dwRemoteScopeId, tableEntry.dwRemotePort));
