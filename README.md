@@ -3,7 +3,7 @@
 Show active tcp connections with connection time and module name.
 
 ## Supported platforms
-Windows 10 or greater. (TODO: MacOS, Ubuntu)
+MacOS BigSur or newer, Windows 10 or greater. (TODO: Ubuntu)
 
 ## How to run it
 
