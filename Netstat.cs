@@ -12,6 +12,10 @@ internal sealed class Netstat
         {
             return new MacNetstat().GetTcpConnections();
         }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return new LinuxNetstat().GetTcpConnections();
+        }
         else 
         {
             throw new NotSupportedException($"Platform '{RuntimeInformation.OSDescription}' is not supported.");
@@ -27,6 +31,10 @@ internal sealed class Netstat
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             return new MacNetstat().GetUdpConnections();
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return new LinuxNetstat().GetUdpConnections();
         }
         else 
         {

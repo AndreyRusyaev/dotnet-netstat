@@ -12,7 +12,7 @@ Console.WriteLine(
 
 var netstat = new Netstat();
 
-foreach (var udpConnectionInfo in netstat.GetUdpConnections())
+foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.OwnerPid))
 {
     string shortenedModuleName = udpConnectionInfo.OwnerModuleName ?? "<Unknown>";
     if (shortenedModuleName.Length > 24)
@@ -54,7 +54,7 @@ Console.WriteLine(
     "tcp_state",
     "active_time");
 
-foreach (var tcpConnectionInfo in netstat.GetTcpConnections())
+foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.OwnerPid))
 {
     string shortenedModuleName = tcpConnectionInfo.OwnerModuleName ?? "<Unknown>";
     if (shortenedModuleName.Length > 24)
