@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Security;
+
+#pragma warning disable CS8981 // CS8981:The type name only contains lower-cased ascii characters.
 
 internal static partial class Libc
 {

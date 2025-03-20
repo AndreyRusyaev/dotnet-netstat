@@ -94,14 +94,14 @@ foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.Own
         GetActiveTime(tcpConnectionInfo.Created));
 }
 
-string GetActiveTime(DateTime? created)
+string GetActiveTime(DateTimeOffset? created)
 {
     if (created == null)
     {
         return "";
     }
 
-    TimeSpan activeTime = DateTime.Now - created.Value;
+    TimeSpan activeTime = DateTimeOffset.Now - created.Value;
 
     if (activeTime.TotalSeconds < 60)
     {

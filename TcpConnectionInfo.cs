@@ -4,7 +4,7 @@ internal record TcpConnectionInfo(
     int OwnerPid, 
     string? OwnerModuleName, 
     string? OwnerModulePath, 
-    DateTime? Created, 
+    DateTimeOffset? Created, 
     TcpState TcpState, 
     IPEndPoint Local, 
     IPEndPoint Remote);
@@ -13,5 +13,5 @@ internal record UdpConnectionInfo(
     int OwnerPid, 
     string? OwnerModuleName, 
     string? OwnerModulePath, 
-    DateTime? Created, 
+    DateTimeOffset? Created, 
     IPEndPoint Local);

@@ -1,24 +1,29 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
 
 internal sealed class LinuxNetstat
 {
     private static readonly TcpState[] tcpStates = [
         0,
-        TcpState.Established, TcpState.SynSent, TcpState.SynReceived, TcpState.FinWait, TcpState.FinWait2, 
+        TcpState.Established, TcpState.SynSent, TcpState.SynReceived, TcpState.FinWait, TcpState.FinWait2,
         TcpState.TimeWait, TcpState.Closed, TcpState.CloseWait, TcpState.LastAck, TcpState.Listening, TcpState.Closing,
     ];
 
     public IEnumerable<TcpConnectionInfo> GetTcpConnections()
     {
+        var inodeTable = BuildINodeSearchTable();
+
         foreach (var msg in EnumDiagMessages(Libc.AF.AF_INET, Libc.IPPROTO.IPPROTO_TCP))
         {
+            SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
+
             yield return new TcpConnectionInfo(
-                0, 
-                null, 
-                null,
-                DateTime.UtcNow,
+                inodeInfo != null ? inodeInfo.pid : 0,
+                inodeInfo?.procName,
+                inodeInfo?.procName,
+                inodeInfo?.fdCreated,
                 GetTcpState(msg.idiag_state),
                 GetIpV4Endpoint(msg.id.ManagedSrc[0], msg.id.idiag_sport),
                 GetIpV4Endpoint(msg.id.ManagedDst[0], msg.id.idiag_dport)
@@ -27,11 +32,13 @@ internal sealed class LinuxNetstat
 
         foreach (var msg in EnumDiagMessages(Libc.AF.AF_INET6, Libc.IPPROTO.IPPROTO_TCP))
         {
+            SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
+
             yield return new TcpConnectionInfo(
-                0, 
-                null, 
-                null,
-                DateTime.UtcNow,
+                inodeInfo != null ? inodeInfo.pid : 0,
+                inodeInfo?.procName,
+                inodeInfo?.procName,
+                inodeInfo?.fdCreated,
                 GetTcpState(msg.idiag_state),
                 GetIpV6Endpoint(msg.id.ManagedSrcBytes, 0, msg.id.idiag_sport),
                 GetIpV6Endpoint(msg.id.ManagedDstBytes, 0, msg.id.idiag_dport)
@@ -41,26 +48,32 @@ internal sealed class LinuxNetstat
 
     public IEnumerable<UdpConnectionInfo> GetUdpConnections()
     {
+        var inodeTable = BuildINodeSearchTable();
+
         foreach (var msg in EnumDiagMessages(Libc.AF.AF_INET, Libc.IPPROTO.IPPROTO_UDP))
         {
+            SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
+
             yield return new UdpConnectionInfo(
-                msg.idiag_inode, 
-                null, 
-                null,
-                DateTime.UtcNow,
+                inodeInfo != null ? inodeInfo.pid : 0,
+                inodeInfo?.procName,
+                inodeInfo?.procName,
+                inodeInfo?.fdCreated,
                 GetIpV4Endpoint(msg.id.ManagedSrc[0], msg.id.idiag_sport)
-            );              
+            );
         }
 
         foreach (var msg in EnumDiagMessages(Libc.AF.AF_INET6, Libc.IPPROTO.IPPROTO_UDP))
         {
+            SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
+
             yield return new UdpConnectionInfo(
-                msg.idiag_inode, 
-                null, 
-                null,
-                DateTime.UtcNow,
+                inodeInfo != null ? inodeInfo.pid : 0,
+                inodeInfo?.procName,
+                inodeInfo?.procName,
+                inodeInfo?.fdCreated,
                 GetIpV6Endpoint(msg.id.ManagedSrcBytes, 0, msg.id.idiag_sport)
-            );              
+            );
         }
     }
 
@@ -131,6 +144,8 @@ internal sealed class LinuxNetstat
         }
     }
 
+
+
     IPEndPoint GetIpV4Endpoint(int ip, int port)
     {
         return new IPEndPoint((uint)ip, (ushort)IPAddress.NetworkToHostOrder((short)port));
@@ -171,4 +186,21 @@ internal sealed class LinuxNetstat
 
         return TcpState.Unknown;
     }
+
+    private IReadOnlyDictionary<long, SocketINodeInfo> BuildINodeSearchTable()
+    {
+        Dictionary<long, SocketINodeInfo> dict = new Dictionary<long, SocketINodeInfo>();
+
+        foreach (var procInfo in LinuxProc.GetProcInfos())
+        {
+            foreach (var fdInfo in procInfo.Fds)
+            {
+                dict[fdInfo.EntryINode] = new SocketINodeInfo(fdInfo.EntryINode, fdInfo.Id, fdInfo.EntryCreated, procInfo.Id, procInfo.ExePath != null ? Path.GetFileName(procInfo.ExePath) : null);
+            }
+        }
+
+        return dict;
+    }
+
+    record SocketINodeInfo(long socketIno, int fd, DateTimeOffset fdCreated, int pid, string? procName);
 }
