@@ -14,9 +14,7 @@ internal sealed class LinuxProc
                 continue;
             }
 
-            var procInfo = new ProcInfo();
-            procInfo.Id = pid;
-            procInfo.EntryPath = procEntryPath;
+            var procInfo = new ProcInfo(pid, procEntryPath);
 
             if (Libc.TryReadLink(Path.Combine(procEntryPath, "exe"), out string exePath))
             {
@@ -37,27 +35,11 @@ internal sealed class LinuxProc
                     if (!Libc.TryReadLink(fdEntryPath, out string fdTargetPath))
                     {
                         continue;
-                    }
+                    }                   
 
-                    var fdInfo = new FdInfo();
-                    fdInfo.Id = fd;
-                    fdInfo.EntryPath = fdEntryPath;
-                    fdInfo.TargetPath = fdTargetPath;
-
-                    Libc.statbuf fdStat = new Libc.statbuf();
-                    if (Libc.lstat(fdEntryPath, ref fdStat) != -1)
-                    {
-                        fdInfo.EntryINode = fdStat.st_ino;
-                        fdInfo.EntryCreated = DateTimeOffset.FromUnixTimeSeconds(fdStat.st_ctime);
-                        fdInfo.EntryModified = DateTimeOffset.FromUnixTimeSeconds(fdStat.st_ctime);
-                    }
-
-                    if (TryParseSocketIno(fdTargetPath, out int socketIno))
-                    {
-                        fdInfo.EntryINode = socketIno;
-                    }
-
-                    procInfo.Fds.Add(fdInfo);
+                    procInfo.AddFileDescriptor(
+                        new FileDescriptorInfo(fd, fdEntryPath, fdTargetPath)
+                    );
                 }
             }
             catch (UnauthorizedAccessException)
@@ -69,59 +51,93 @@ internal sealed class LinuxProc
         }
 
         return result;
-    }
-
-    private static bool TryParseSocketIno(string path, out int socketIno)
-    {
-        socketIno = 0;
-
-        var pattern = "socket:[";
-        var patternStart = path.IndexOf(pattern);
-        if (patternStart == -1)
-        {
-            return false;
-        }
-
-        var inoStartIndex = patternStart + pattern.Length;
-
-        var inoEndIndex = path.IndexOf("]", inoStartIndex);
-        if (inoEndIndex == -1)
-        {
-            return false;
-        }
-
-        var socketInoString = path.Substring(inoStartIndex, inoEndIndex - inoStartIndex);
-        if (!int.TryParse(socketInoString, out socketIno))
-        {
-            return false;
-        }
-
-        return true;
-    }
+    }    
 
     public sealed class ProcInfo
     {
-        public int Id;
+        private List<FileDescriptorInfo> fileDescriptorInfos = new List<FileDescriptorInfo>();
 
-        public string EntryPath;
+        public ProcInfo(int id, string procEntryPath, string? exePath = null)
+        {
+            Id = id;
+            ProcEntryPath = procEntryPath;
+            ExePath = exePath;
+        }
 
-        public string ExePath;
+        public int Id { get; private set; }
 
-        public List<FdInfo> Fds { get; } = new List<FdInfo>();
+        public string ProcEntryPath { get; private set; }
+
+        public string? ExePath { get; set; }
+
+        public IReadOnlyCollection<FileDescriptorInfo> Fds => fileDescriptorInfos.AsReadOnly();
+
+        public void AddFileDescriptor(FileDescriptorInfo fileDescriptorInfo)
+        {
+            fileDescriptorInfos.Add(fileDescriptorInfo);
+        }
     }
 
-    public sealed class FdInfo
+    public sealed class FileDescriptorInfo
     {
-        public int Id;
+        public FileDescriptorInfo(int id, string procEntryPath, string? targetPath)
+        {
+            Id = id;
+            ProcEntryPath = procEntryPath;
+            TargetPath = targetPath;
 
-        public string? EntryPath;
+            Libc.statbuf fdStat = new Libc.statbuf();
+            if (Libc.lstat(procEntryPath, ref fdStat) != -1)
+            {
+                EntryINode = fdStat.st_ino;
+                EntryCreated = DateTimeOffset.FromUnixTimeSeconds(fdStat.st_ctime);
+                EntryModified = DateTimeOffset.FromUnixTimeSeconds(fdStat.st_ctime);
+            }
 
-        public string? TargetPath;
+            if (!string.IsNullOrEmpty(targetPath) && TryParseSocketIno(targetPath, out int socketIno))
+            {
+                EntryINode = socketIno;
+            }
+        }
 
-        public long EntryINode;
+        public int Id { get; private set; }
 
-        public DateTimeOffset EntryCreated;
+        public string? ProcEntryPath { get; private set; }
 
-        public DateTimeOffset EntryModified;
+        public string? TargetPath { get; private set; }
+
+        public long EntryINode { get; private set; }
+
+        public DateTimeOffset EntryCreated { get; private set; }
+
+        public DateTimeOffset EntryModified { get; private set; }
+
+        private static bool TryParseSocketIno(string path, out int socketIno)
+        {
+            socketIno = 0;
+
+            var pattern = "socket:[";
+            var patternStart = path.IndexOf(pattern);
+            if (patternStart == -1)
+            {
+                return false;
+            }
+
+            var inoStartIndex = patternStart + pattern.Length;
+
+            var inoEndIndex = path.IndexOf("]", inoStartIndex);
+            if (inoEndIndex == -1)
+            {
+                return false;
+            }
+
+            var socketInoString = path.Substring(inoStartIndex, inoEndIndex - inoStartIndex);
+            if (!int.TryParse(socketInoString, out socketIno))
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 }
