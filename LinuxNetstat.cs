@@ -79,7 +79,14 @@ internal sealed class LinuxNetstat
 
     IEnumerable<Libc.inet_diag_msg> EnumDiagMessages(Libc.AF addressFamily, Libc.IPPROTO protocol)
     {
-        using (var socket = new Socket(Libc.socket((int)Libc.AF.AF_NETLINK, Libc.SOCK_TYPE.SOCK_RAW, Libc.NETLINK_SOCK_DIAG)))
+        var socketHandle = Libc.socket((int)Libc.AF.AF_NETLINK, Libc.SOCK_TYPE.SOCK_RAW, Libc.NETLINK_SOCK_DIAG);
+        if (socketHandle.IsInvalid)
+        {
+            var errorCode = Marshal.GetLastSystemError();
+            throw new Exception($"socket failed. ErrorCode = '{errorCode}'.");
+        }
+
+        using (var socket = new Socket(socketHandle))
         {
             Libc.sockaddr_nl socket_addr = new Libc.sockaddr_nl();
             socket_addr.nl_family = (int)Libc.AF.AF_NETLINK;
@@ -96,9 +103,10 @@ internal sealed class LinuxNetstat
             request.req.idiag_ext = 0;
 
             int sendToResult = Libc.sendto(socket.SafeHandle, ref request, Marshal.SizeOf(request), 0, ref socket_addr, Marshal.SizeOf(socket_addr));
-            if (sendToResult < 0)
+            if (sendToResult == -1)
             {
-                throw new Exception($"Failed with error code {sendToResult}");
+                var errorCode = Marshal.GetLastSystemError();
+                throw new Exception($"sendto failed. ErrorCode = '{errorCode}'.");                
             }
 
             IntPtr buf = Marshal.AllocHGlobal(8132);
@@ -143,8 +151,6 @@ internal sealed class LinuxNetstat
             }
         }
     }
-
-
 
     IPEndPoint GetIpV4Endpoint(int ip, int port)
     {
