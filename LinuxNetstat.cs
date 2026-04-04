@@ -1,21 +1,15 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text;
+
 
 internal sealed class LinuxNetstat
 {
-    private static readonly TcpState[] tcpStates = [
-        0,
-        TcpState.Established, TcpState.SynSent, TcpState.SynReceived, TcpState.FinWait, TcpState.FinWait2,
-        TcpState.TimeWait, TcpState.Closed, TcpState.CloseWait, TcpState.LastAck, TcpState.Listening, TcpState.Closing,
-    ];
-
     public IEnumerable<TcpConnectionInfo> GetTcpConnections()
     {
         var inodeTable = BuildINodeSearchTable();
 
-        foreach (var msg in EnumDiagMessages(Libc.AF.AF_INET, Libc.IPPROTO.IPPROTO_TCP))
+        foreach (Libc.inet_diag_msg msg in EnumDiagMessages(Libc.AF.AF_INET, Libc.IPPROTO.IPPROTO_TCP))
         {
             SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
 
@@ -34,14 +28,22 @@ internal sealed class LinuxNetstat
         {
             SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
 
+            var scopeId = msg.id.idiag_if;
+
+            var srcAddress = msg.id.ManagedSrcBytes;            
+            var srcPort = msg.id.idiag_sport;
+
+            var dstAddress = msg.id.ManagedDstBytes;
+            var dstPort = msg.id.idiag_dport;
+
             yield return new TcpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
                 inodeInfo?.procName,
                 inodeInfo?.procName,
                 inodeInfo?.fdCreated,
                 GetTcpState(msg.idiag_state),
-                GetIpV6Endpoint(msg.id.ManagedSrcBytes, 0, msg.id.idiag_sport),
-                GetIpV6Endpoint(msg.id.ManagedDstBytes, 0, msg.id.idiag_dport)
+                GetIpV6Endpoint(srcAddress, scopeId, srcPort),
+                GetIpV6Endpoint(dstAddress, scopeId, dstPort)
             );
         }
     }
@@ -67,12 +69,17 @@ internal sealed class LinuxNetstat
         {
             SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
 
+            var scopeId = msg.id.idiag_if;
+
+            var srcAddress = msg.id.ManagedSrcBytes;            
+            var srcPort = msg.id.idiag_sport;
+
             yield return new UdpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
                 inodeInfo?.procName,
                 inodeInfo?.procName,
                 inodeInfo?.fdCreated,
-                GetIpV6Endpoint(msg.id.ManagedSrcBytes, 0, msg.id.idiag_sport)
+                GetIpV6Endpoint(srcAddress, scopeId, srcPort)
             );
         }
     }
@@ -109,45 +116,54 @@ internal sealed class LinuxNetstat
                 throw new Exception($"sendto failed. ErrorCode = '{errorCode}'.");                
             }
 
-            IntPtr buf = Marshal.AllocHGlobal(8132);
-            while (true)
+            int bufSize = 65536;
+            IntPtr buf = Marshal.AllocHGlobal(bufSize);
+            try
             {
-                int len = Libc.recv(socket.SafeHandle, buf, 8132, 0);
-                if (len == 0)
-                {
-                    break;
-                }
-
                 while (true)
                 {
-                    if (len < Marshal.SizeOf<Libc.nlmsghdr>())
+                    int len = Libc.recv(socket.SafeHandle, buf, bufSize, 0);
+                    if (len == 0)
                     {
                         break;
                     }
 
-                    var nlh = Marshal.PtrToStructure<Libc.nlmsghdr>(buf);
-
-                    if (nlh.nlmsg_len < Marshal.SizeOf<Libc.nlmsghdr>() || nlh.nlmsg_len > len)
+                    IntPtr bufStart = buf;
+                    while (true)
                     {
-                        break;
+                        if (len < Marshal.SizeOf<Libc.nlmsghdr>())
+                        {
+                            break;
+                        }
+
+                        var nlh = Marshal.PtrToStructure<Libc.nlmsghdr>(bufStart);
+
+                        if (nlh.nlmsg_len < Marshal.SizeOf<Libc.nlmsghdr>() || nlh.nlmsg_len > len)
+                        {
+                            break;
+                        }
+
+                        if (nlh.nlmsg_type == (short)Libc.NLMSG_TYPE.NLMSG_DONE)
+                        {
+                            yield break;
+                        }
+
+                        if (nlh.nlmsg_type == (short)Libc.NLMSG_TYPE.NLMSG_ERROR)
+                        {
+                            Console.WriteLine("ERROR");
+                            yield break;
+                        }
+
+                        yield return Marshal.PtrToStructure<Libc.inet_diag_msg>(bufStart + Libc.NLMSG_ALIGNTO(Marshal.SizeOf<Libc.nlmsghdr>()));
+
+                        bufStart += Libc.NLMSG_ALIGNTO(nlh.nlmsg_len);
+                        len -= Libc.NLMSG_ALIGNTO(nlh.nlmsg_len);
                     }
-
-                    if (nlh.nlmsg_type == (short)Libc.NLMSG_TYPE.NLMSG_DONE)
-                    {
-                        yield break;
-                    }
-
-                    if (nlh.nlmsg_type == (short)Libc.NLMSG_TYPE.NLMSG_ERROR)
-                    {
-                        Console.WriteLine("ERROR");
-                        yield break;
-                    }
-
-                    yield return Marshal.PtrToStructure<Libc.inet_diag_msg>(buf + Libc.NLMSG_ALIGNTO(Marshal.SizeOf<Libc.nlmsghdr>()));
-
-                    buf += Libc.NLMSG_ALIGNTO(nlh.nlmsg_len);
-                    len -= Libc.NLMSG_ALIGNTO(nlh.nlmsg_len);
                 }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buf);
             }
         }
     }
