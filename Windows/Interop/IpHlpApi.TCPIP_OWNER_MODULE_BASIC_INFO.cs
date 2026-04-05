@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 
 internal static partial class IpHlpApi
-{    
+{
     public enum TCPIP_OWNER_MODULE_INFO_CLASS
     {
         TCPIP_OWNER_MODULE_INFO_BASIC
@@ -16,10 +16,4 @@ internal static partial class IpHlpApi
         [MarshalAs(UnmanagedType.LPWStr)]
         public string pModulePath;
     }
-
-    [DllImport("iphlpapi.dll")]
-    public static extern int GetOwnerModuleFromTcpEntry(IntPtr pTcpTable, TCPIP_OWNER_MODULE_INFO_CLASS Class, IntPtr pBuffer, ref int pdwSize);
-
-    [DllImport("iphlpapi.dll")]
-    public static extern int GetOwnerModuleFromTcp6Entry(IntPtr pTcpEntry, TCPIP_OWNER_MODULE_INFO_CLASS Class, IntPtr pBuffer, ref int pdwSize);
 }
