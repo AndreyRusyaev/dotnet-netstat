@@ -16,6 +16,7 @@ foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.Own
 {
     string shortenedModuleName = Formatting.FormatModuleName(udpConnectionInfo.OwnerModuleName);
     string local_ip = Formatting.FormatIpAddress(udpConnectionInfo.Local.Address);
+    string activeTime = Formatting.FormatActiveTime(DateTimeOffset.Now - udpConnectionInfo.Created);
 
     Console.WriteLine(
         "[{0,-5}] {1,-24} {2,-30} {3,-5} {4,4}",
@@ -23,7 +24,7 @@ foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.Own
         shortenedModuleName,
         local_ip,
         udpConnectionInfo.Local.Port,
-        FormatActiveTime(udpConnectionInfo.Created));
+        activeTime);
 }
 
 Console.WriteLine();
@@ -47,6 +48,7 @@ foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.Own
 
     string local_ip = Formatting.FormatIpAddress(tcpConnectionInfo.Local.Address);
     string remote_ip = Formatting.FormatIpAddress(tcpConnectionInfo.Remote.Address);
+    string activeTime = Formatting.FormatActiveTime(DateTimeOffset.Now - tcpConnectionInfo.Created);
 
     Console.WriteLine(
         "[{0,-5}] {1,-24} {2,-30} {3,-5} <-> {4,-30} {5,-5} {6,-12} {7,4}",
@@ -57,15 +59,5 @@ foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.Own
         remote_ip,
         tcpConnectionInfo.Remote.Port,
         tcpConnectionInfo.TcpState,
-        FormatActiveTime(tcpConnectionInfo.Created));
-}
-
-string FormatActiveTime(DateTimeOffset? created)
-{
-    if (created == null)
-    {
-        return "";
-    }
-
-    return Formatting.FormatActiveTime(DateTimeOffset.Now - created.Value);
+        activeTime);
 }

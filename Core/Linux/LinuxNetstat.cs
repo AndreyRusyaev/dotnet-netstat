@@ -55,12 +55,15 @@ internal sealed class LinuxNetstat
         {
             SocketINodeInfo? inodeInfo = inodeTable.GetValueOrDefault(msg.idiag_inode);
 
+            var srcAddress = msg.id.ManagedSrcBytes[0];
+            var srcPort = msg.id.idiag_sport;
+
             yield return new UdpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
                 inodeInfo?.exePath != null ? Path.GetFileName(inodeInfo.exePath) : null,
                 inodeInfo?.exePath,
                 inodeInfo?.fdCreated,
-                GetIpV4Endpoint(msg.id.ManagedSrc[0], msg.id.idiag_sport)
+                GetIpV4Endpoint(srcAddress, srcPort)
             );
         }
 

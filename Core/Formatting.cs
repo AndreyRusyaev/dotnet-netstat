@@ -33,23 +33,30 @@ internal static class Formatting
         return ipAddress.ToString();
     }
 
-    public static string FormatActiveTime(TimeSpan activeTime)
+    public static string FormatActiveTime(TimeSpan? activeTime)
     {
-        if (activeTime.TotalSeconds < 60)
+        if (activeTime == null)
         {
-            return $"{(int)activeTime.TotalSeconds}s";
+            return "";
         }
-        else if (activeTime.TotalMinutes < 60)
+
+        var activeTimeValue = activeTime.Value;
+
+        if (activeTimeValue.TotalSeconds < 60)
         {
-            return $"{(int)activeTime.TotalMinutes}m";
+            return $"{(int)activeTimeValue.TotalSeconds}s";
         }
-        else if (activeTime.TotalHours < 24)
+        else if (activeTimeValue.TotalMinutes < 60)
         {
-            return $"{(int)activeTime.TotalHours}h";
+            return $"{(int)activeTimeValue.TotalMinutes}m";
+        }
+        else if (activeTimeValue.TotalHours < 24)
+        {
+            return $"{(int)activeTimeValue.TotalHours}h";
         }
         else
         {
-            return $"{(int)activeTime.TotalDays}d";
+            return $"{(int)activeTimeValue.TotalDays}d";
         }
     }
 }
