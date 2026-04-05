@@ -14,21 +14,8 @@ var netstat = new Netstat();
 
 foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.OwnerPid).ThenBy(x => x.Local.Address.ToString()))
 {
-    string shortenedModuleName = udpConnectionInfo.OwnerModuleName ?? "<Unknown>";
-    if (shortenedModuleName.Length > 24)
-    {
-        shortenedModuleName = shortenedModuleName.Substring(0, 22) + "..";
-    }
-
-    string local_ip = udpConnectionInfo.Local.Address.ToString();
-    if (udpConnectionInfo.Local.Address.Equals(IPAddress.Any))
-    {
-        local_ip = "0.0.0.0";
-    }
-    else if (udpConnectionInfo.Local.Address.Equals(IPAddress.IPv6Any))
-    {
-        local_ip = "[::]";
-    }
+    string shortenedModuleName = Formatting.FormatModuleName(udpConnectionInfo.OwnerModuleName);
+    string local_ip = Formatting.FormatIpAddress(udpConnectionInfo.Local.Address);
 
     Console.WriteLine(
         "[{0,-5}] {1,-24} {2,-30} {3,-5} {4,4}",
@@ -36,7 +23,7 @@ foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.Own
         shortenedModuleName,
         local_ip,
         udpConnectionInfo.Local.Port,
-        GetActiveTime(udpConnectionInfo.Created));
+        FormatActiveTime(udpConnectionInfo.Created));
 }
 
 Console.WriteLine();
@@ -56,31 +43,10 @@ Console.WriteLine(
 
 foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.OwnerPid).ThenBy(x => x.Local.Address.ToString()))
 {
-    string shortenedModuleName = tcpConnectionInfo.OwnerModuleName ?? "<Unknown>";
-    if (shortenedModuleName.Length > 24)
-    {
-        shortenedModuleName = shortenedModuleName.Substring(0, 22) + "..";
-    }
+    string shortenedModuleName = Formatting.FormatModuleName(tcpConnectionInfo.OwnerModuleName);
 
-    string local_ip = tcpConnectionInfo.Local.Address.ToString();
-    if (tcpConnectionInfo.Local.Address.Equals(IPAddress.Any))
-    {
-        local_ip = "0.0.0.0";
-    }
-    else if (tcpConnectionInfo.Local.Address.Equals(IPAddress.IPv6Any))
-    {
-        local_ip = "[::]";
-    }
-
-    string remote_ip = tcpConnectionInfo.Remote.Address.ToString();
-    if (tcpConnectionInfo.Remote.Address.Equals(IPAddress.Any))
-    {
-        remote_ip = "0.0.0.0";
-    }
-    else if (tcpConnectionInfo.Remote.Address.Equals(IPAddress.IPv6Any))
-    {
-        remote_ip = "[::]";
-    }
+    string local_ip = Formatting.FormatIpAddress(tcpConnectionInfo.Local.Address);
+    string remote_ip = Formatting.FormatIpAddress(tcpConnectionInfo.Remote.Address);
 
     Console.WriteLine(
         "[{0,-5}] {1,-24} {2,-30} {3,-5} <-> {4,-30} {5,-5} {6,-12} {7,4}",
@@ -91,30 +57,15 @@ foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.Own
         remote_ip,
         tcpConnectionInfo.Remote.Port,
         tcpConnectionInfo.TcpState,
-        GetActiveTime(tcpConnectionInfo.Created));
+        FormatActiveTime(tcpConnectionInfo.Created));
 }
 
-string GetActiveTime(DateTimeOffset? created)
+string FormatActiveTime(DateTimeOffset? created)
 {
     if (created == null)
     {
         return "";
     }
 
-    TimeSpan activeTime = DateTimeOffset.Now - created.Value;
-
-    if (activeTime.TotalSeconds < 60)
-    {
-        return $"{(int)activeTime.TotalSeconds}s";
-    }
-
-    if (activeTime.TotalMinutes < 60)
-    {
-        return $"{(int)activeTime.TotalMinutes}m";    
-    }
-
-    var totalHours = (int)activeTime.TotalMinutes / 60;
-    var minutes = (int)activeTime.TotalMinutes % 60;
-
-    return $"{totalHours}h {minutes}m";
+    return Formatting.FormatActiveTime(DateTimeOffset.Now - created.Value);
 }
