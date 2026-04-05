@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 
-
 internal sealed class LinuxNetstat
 {
     public IEnumerable<TcpConnectionInfo> GetTcpConnections()
@@ -15,8 +14,8 @@ internal sealed class LinuxNetstat
 
             yield return new TcpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
-                inodeInfo?.procName,
-                inodeInfo?.procName,
+                inodeInfo?.exePath != null ? Path.GetFileName(inodeInfo.exePath) : null,
+                inodeInfo?.exePath,
                 inodeInfo?.fdCreated,
                 GetTcpState(msg.idiag_state),
                 GetIpV4Endpoint(msg.id.ManagedSrc[0], msg.id.idiag_sport),
@@ -30,7 +29,7 @@ internal sealed class LinuxNetstat
 
             var scopeId = msg.id.idiag_if;
 
-            var srcAddress = msg.id.ManagedSrcBytes;            
+            var srcAddress = msg.id.ManagedSrcBytes;
             var srcPort = msg.id.idiag_sport;
 
             var dstAddress = msg.id.ManagedDstBytes;
@@ -38,8 +37,8 @@ internal sealed class LinuxNetstat
 
             yield return new TcpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
-                inodeInfo?.procName,
-                inodeInfo?.procName,
+                inodeInfo?.exePath != null ? Path.GetFileName(inodeInfo.exePath) : null,
+                inodeInfo?.exePath,
                 inodeInfo?.fdCreated,
                 GetTcpState(msg.idiag_state),
                 GetIpV6Endpoint(srcAddress, scopeId, srcPort),
@@ -58,8 +57,8 @@ internal sealed class LinuxNetstat
 
             yield return new UdpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
-                inodeInfo?.procName,
-                inodeInfo?.procName,
+                inodeInfo?.exePath != null ? Path.GetFileName(inodeInfo.exePath) : null,
+                inodeInfo?.exePath,
                 inodeInfo?.fdCreated,
                 GetIpV4Endpoint(msg.id.ManagedSrc[0], msg.id.idiag_sport)
             );
@@ -71,13 +70,13 @@ internal sealed class LinuxNetstat
 
             var scopeId = msg.id.idiag_if;
 
-            var srcAddress = msg.id.ManagedSrcBytes;            
+            var srcAddress = msg.id.ManagedSrcBytes;
             var srcPort = msg.id.idiag_sport;
 
             yield return new UdpConnectionInfo(
                 inodeInfo != null ? inodeInfo.pid : 0,
-                inodeInfo?.procName,
-                inodeInfo?.procName,
+                inodeInfo?.exePath != null ? Path.GetFileName(inodeInfo.exePath) : null,
+                inodeInfo?.exePath,
                 inodeInfo?.fdCreated,
                 GetIpV6Endpoint(srcAddress, scopeId, srcPort)
             );
@@ -113,7 +112,7 @@ internal sealed class LinuxNetstat
             if (sendToResult == -1)
             {
                 var errorCode = Marshal.GetLastSystemError();
-                throw new Exception($"sendto failed. ErrorCode = '{errorCode}'.");                
+                throw new Exception($"sendto failed. ErrorCode = '{errorCode}'.");
             }
 
             int bufSize = 65536;
@@ -217,12 +216,12 @@ internal sealed class LinuxNetstat
         {
             foreach (var fdInfo in procInfo.Fds)
             {
-                dict[fdInfo.EntryINode] = new SocketINodeInfo(fdInfo.EntryINode, fdInfo.Id, fdInfo.EntryCreated, procInfo.Id, procInfo.ExePath != null ? Path.GetFileName(procInfo.ExePath) : null);
+                dict[fdInfo.EntryINode] = new SocketINodeInfo(fdInfo.EntryINode, fdInfo.Id, fdInfo.EntryCreated, procInfo.Id, procInfo.ExePath);
             }
         }
 
         return dict;
     }
 
-    record SocketINodeInfo(long socketIno, int fd, DateTimeOffset fdCreated, int pid, string? procName);
+    record SocketINodeInfo(long socketIno, int fd, DateTimeOffset fdCreated, int pid, string? exePath);
 }
