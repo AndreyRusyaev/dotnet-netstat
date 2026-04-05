@@ -3,16 +3,16 @@
 Console.WriteLine("UDP:");
 
 Console.WriteLine(
-    "[{0,-5}] {1,-24} {2,-16} {3,-5} {4}",
+    "[{0,-5}] {1,-24} {2,-30} {3,-5} {4,4}",
     "pid",
     "module",
-    "ip",
-    "port",
+    "local_ip",
+    "lport",
     "active_time");
 
 var netstat = new Netstat();
 
-foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.OwnerPid))
+foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.OwnerPid).ThenBy(x => x.Local.Address.ToString()))
 {
     string shortenedModuleName = udpConnectionInfo.OwnerModuleName ?? "<Unknown>";
     if (shortenedModuleName.Length > 24)
@@ -31,7 +31,7 @@ foreach (var udpConnectionInfo in netstat.GetUdpConnections().OrderBy(x => x.Own
     }
 
     Console.WriteLine(
-        "[{0,-5}] {1,-24} {2,-16} {3,-5} {4,4}",
+        "[{0,-5}] {1,-24} {2,-30} {3,-5} {4,4}",
         udpConnectionInfo.OwnerPid,
         shortenedModuleName,
         local_ip,
@@ -44,7 +44,7 @@ Console.WriteLine();
 Console.WriteLine("TCP:");
 
 Console.WriteLine(
-    "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7}",
+    "[{0,-5}] {1,-24} {2,-30} {3,-5} <-> {4,-30} {5,-5} {6,-12} {7,4}",
     "pid",
     "module",
     "local_ip",
@@ -54,7 +54,7 @@ Console.WriteLine(
     "tcp_state",
     "active_time");
 
-foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.OwnerPid))
+foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.OwnerPid).ThenBy(x => x.Local.Address.ToString()))
 {
     string shortenedModuleName = tcpConnectionInfo.OwnerModuleName ?? "<Unknown>";
     if (shortenedModuleName.Length > 24)
@@ -83,7 +83,7 @@ foreach (var tcpConnectionInfo in netstat.GetTcpConnections().OrderBy(x => x.Own
     }
 
     Console.WriteLine(
-        "[{0,-5}] {1,-24} {2,-16} {3,-5} <-> {4,-16} {5,-5} {6,-11} {7,4}",
+        "[{0,-5}] {1,-24} {2,-30} {3,-5} <-> {4,-30} {5,-5} {6,-12} {7,4}",
         tcpConnectionInfo.OwnerPid,
         shortenedModuleName,
         local_ip,
@@ -116,5 +116,5 @@ string GetActiveTime(DateTimeOffset? created)
     var totalHours = (int)activeTime.TotalMinutes / 60;
     var minutes = (int)activeTime.TotalMinutes % 60;
 
-    return $"{totalHours}h{minutes}m";
+    return $"{totalHours}h {minutes}m";
 }
